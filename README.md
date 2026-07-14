@@ -143,3 +143,5 @@ Make sure you have the following installed:
 
 ## 📜 License
 This project is licensed under the ISC License.
+<img width="1536" height="826" alt="Screenshot 2026-06-24 144533" src="https://github.com/user-attachments/assets/e75a45cf-3a4e-4b34-9877-6c9196121463" />
+
