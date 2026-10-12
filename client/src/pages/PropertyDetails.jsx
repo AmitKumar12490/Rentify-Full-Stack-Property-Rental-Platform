@@ -71,6 +71,19 @@ const PropertyDetails = () => {
             <p className="text-gray-600 whitespace-pre-line leading-relaxed">{property.description}</p>
           </div>
 
+          {property.amenities && property.amenities.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold mb-3">Amenities & Features</h2>
+              <div className="flex flex-wrap gap-2">
+                {property.amenities.map((amenity, idx) => (
+                  <span key={idx} className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold border border-indigo-100/80">
+                    ✓ {amenity}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <h2 className="text-xl font-bold mb-3">Location on Map</h2>
             <MapComponent lat={property.coordinates?.lat} lng={property.coordinates?.lng} title={property.title} />

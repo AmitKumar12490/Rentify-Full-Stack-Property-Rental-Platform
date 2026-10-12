@@ -1,5 +1,17 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment Variables & Secrets
 .env
 .env.local
-.DS_Store
+.env.*.local
+*.env
+!.env.example
+
+# Logs
 *.log
+npm-debug.log*
+
+# OS / Editor
+.DS_Store
+Thumbs.db

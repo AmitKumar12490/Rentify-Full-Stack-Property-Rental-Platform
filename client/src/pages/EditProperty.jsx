@@ -13,7 +13,7 @@ const EditProperty = () => {
   const [error, setError] = useState('');
   
   const [formData, setFormData] = useState({
-    title: '', description: '', price: '', location: '', lat: '', lng: '', type: 'Apartment', bhk: '1', furnished: 'Unfurnished'
+    title: '', description: '', price: '', location: '', lat: '', lng: '', type: 'Apartment', bhk: '1', furnished: 'Unfurnished', amenities: ''
   });
   const [images, setImages] = useState(null);
 
@@ -22,9 +22,11 @@ const EditProperty = () => {
   useEffect(() => {
     api.get(`/property/${id}`).then(res => {
       const p = res.data;
+      const amenitiesStr = Array.isArray(p.amenities) ? p.amenities.join(', ') : (p.amenities || '');
       setFormData({
         title: p.title, description: p.description, price: p.price, location: p.location,
-        lat: p.coordinates?.lat || '', lng: p.coordinates?.lng || '', type: p.type, bhk: p.bhk, furnished: p.furnished
+        lat: p.coordinates?.lat || '', lng: p.coordinates?.lng || '', type: p.type, bhk: p.bhk, furnished: p.furnished,
+        amenities: amenitiesStr
       });
       setLoading(false);
     }).catch(err => {
@@ -81,6 +83,17 @@ const EditProperty = () => {
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Furnishing</label><select name="furnished" value={formData.furnished} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"><option value="Furnished">Furnished</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Unfurnished">Unfurnished</option></select></div>
         </div>
         <div><label className="block text-sm font-medium text-gray-700 mb-1">Location</label><input type="text" name="location" required value={formData.location} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Amenities (Comma-separated)</label>
+          <input 
+            type="text" 
+            name="amenities" 
+            placeholder="e.g. Parking, Balcony, WiFi, Gym, Pet-Friendly, Security" 
+            value={formData.amenities} 
+            onChange={handleChange} 
+            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" 
+          />
+        </div>
         <div className="grid grid-cols-2 gap-6">
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Lat (Optional)</label><input type="number" step="any" name="lat" value={formData.lat} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Lng (Optional)</label><input type="number" step="any" name="lng" value={formData.lng} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>

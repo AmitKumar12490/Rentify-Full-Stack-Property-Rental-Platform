@@ -1,5 +1,5 @@
 const express = require("express");
-const { addProperty, getProperties, getPropertyById, getOwnerProperties, updateProperty, deleteProperty } = require("../controllers/propertyController");
+const { addProperty, getProperties, getPropertyById, getOwnerProperties, updateProperty, deleteProperty, semanticSearch } = require("../controllers/propertyController");
 const upload = require("../middleware/upload");
 const { protect } = require("../middleware/auth");
 const { authorize } = require("../middleware/role");
@@ -8,6 +8,11 @@ const router = express.Router();
 
 // Public routes
 router.get("/", getProperties);
+
+// RAG-Powered Semantic Search route (MUST be placed before /:id)
+router.post("/semantic-search", semanticSearch);
+router.get("/semantic-search", semanticSearch);
+
 router.route("/:id")
   .get(getPropertyById)
   .put(protect, authorize("Owner"), upload.array("images", 5), updateProperty)

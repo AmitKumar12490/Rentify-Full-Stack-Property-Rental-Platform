@@ -1,6 +1,8 @@
 const Property = require("../models/Property");
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
+const { buildPropertySearchText, generateEmbedding } = require("../services/embeddingService");
+const { performSemanticSearch } = require("../services/semanticSearchService");
 
 const uploadToCloudinary = (fileBuffer) => {
   return new Promise((resolve, reject) => {
@@ -15,9 +17,23 @@ const uploadToCloudinary = (fileBuffer) => {
   });
 };
 
+const parseAmenities = (raw) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return raw.split(",").map(a => a.trim()).filter(Boolean);
+    }
+  }
+  return [];
+};
+
 const addProperty = async (req, res) => {
   try {
-    const { title, description, price, location, lat, lng, type, bhk, furnished } = req.body;
+    const { title, description, price, location, lat, lng, type, bhk, furnished, amenities } = req.body;
 
     let imageUrls = [];
     if (req.files) {
@@ -25,6 +41,26 @@ const addProperty = async (req, res) => {
         const url = await uploadToCloudinary(file.buffer);
         imageUrls.push(url);
       }
+    }
+
+    const amenitiesList = parseAmenities(amenities);
+
+    // Pre-calculate embedding for newly created property
+    let embedding = undefined;
+    try {
+      const searchText = buildPropertySearchText({
+        title,
+        description,
+        price: Number(price),
+        location,
+        type,
+        bhk: Number(bhk),
+        furnished,
+        amenities: amenitiesList
+      });
+      embedding = await generateEmbedding(searchText);
+    } catch (embErr) {
+      console.warn("Embedding generation failed during property creation:", embErr.message);
     }
 
     const property = await Property.create({
@@ -37,6 +73,9 @@ const addProperty = async (req, res) => {
       bhk: Number(bhk),
       furnished,
       images: imageUrls,
+      amenities: amenitiesList,
+      embedding,
+      embeddingUpdatedAt: embedding ? new Date() : undefined,
       ownerId: req.user._id,
     });
 
@@ -95,15 +134,19 @@ const updateProperty = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to update this property" });
     }
 
-    const { title, description, price, location, lat, lng, type, bhk, furnished } = req.body;
+    const { title, description, price, location, lat, lng, type, bhk, furnished, amenities } = req.body;
 
     property.title = title || property.title;
     property.description = description || property.description;
-    property.price = price || property.price;
+    property.price = price !== undefined ? Number(price) : property.price;
     property.location = location || property.location;
     property.type = type || property.type;
-    property.bhk = bhk || property.bhk;
+    property.bhk = bhk !== undefined ? Number(bhk) : property.bhk;
     property.furnished = furnished || property.furnished;
+
+    if (amenities !== undefined) {
+      property.amenities = parseAmenities(amenities);
+    }
 
     if (lat && lng) {
       property.coordinates = { lat: parseFloat(lat), lng: parseFloat(lng) };
@@ -116,6 +159,15 @@ const updateProperty = async (req, res) => {
         newImages.push(url);
       }
       property.images = newImages; 
+    }
+
+    // Refresh embedding on property updates
+    try {
+      const searchText = buildPropertySearchText(property);
+      property.embedding = await generateEmbedding(searchText);
+      property.embeddingUpdatedAt = new Date();
+    } catch (embErr) {
+      console.warn("Embedding refresh failed during property update:", embErr.message);
     }
 
     const updatedProperty = await property.save();
@@ -141,4 +193,52 @@ const deleteProperty = async (req, res) => {
   }
 };
 
-module.exports = { addProperty, getProperties, getPropertyById, getOwnerProperties, updateProperty, deleteProperty };
+/**
+ * Handles RAG-powered semantic property search queries.
+ * Validates search input, performs vector/hybrid scoring, and returns RAG recommendation.
+ */
+const semanticSearch = async (req, res) => {
+  try {
+    const rawQuery = req.body?.query !== undefined ? req.body.query : req.query?.query;
+    const query = typeof rawQuery === "string" ? rawQuery.trim() : "";
+
+    if (!query) {
+      return res.status(400).json({
+        message: "Search query is required",
+        results: [],
+        count: 0
+      });
+    }
+
+    if (query.length > 500) {
+      return res.status(400).json({
+        message: "Search query exceeds maximum limit of 500 characters",
+        results: [],
+        count: 0
+      });
+    }
+
+    const limit = parseInt(req.body?.limit || req.query?.limit || 9, 10);
+    const searchData = await performSemanticSearch(query, { limit });
+
+    res.json(searchData);
+  } catch (error) {
+    console.error("Semantic search failed:", error);
+    res.status(500).json({
+      message: "Semantic search encounter an internal error",
+      error: error.message,
+      results: [],
+      count: 0
+    });
+  }
+};
+
+module.exports = {
+  addProperty,
+  getProperties,
+  getPropertyById,
+  getOwnerProperties,
+  updateProperty,
+  deleteProperty,
+  semanticSearch
+};

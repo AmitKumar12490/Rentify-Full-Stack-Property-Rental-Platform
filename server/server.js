@@ -18,8 +18,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.get("/api/health", (req, res) => res.json({ status: "ok", service: "Rentify API", timestamp: new Date() }));
 app.use("/api/auth", authRoutes);
 app.use("/api/property", propertyRoutes);
+app.use("/api/properties", propertyRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 
 if (require.main === module) {

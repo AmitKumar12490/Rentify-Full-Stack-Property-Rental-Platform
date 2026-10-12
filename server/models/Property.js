@@ -14,6 +14,13 @@ const propertySchema = new mongoose.Schema(
     bhk: { type: Number, required: true },
     furnished: { type: String, enum: ["Furnished", "Semi-Furnished", "Unfurnished"], default: "Unfurnished" },
     images: [{ type: String }],
+    amenities: { type: [String], default: [] },
+    embedding: {
+      type: [Number],
+      default: undefined,
+      select: false,
+    },
+    embeddingUpdatedAt: { type: Date },
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
